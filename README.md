@@ -115,7 +115,7 @@ build/libs/
 Current version:
 
 ```
-1.0.0 Alpha
+0.1.0 Alpha
 ```
 
 Проект находится в активной разработке.
