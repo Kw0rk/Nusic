@@ -1,9 +1,147 @@
-# Nusic
+# 🎵 Nusic
 
-## Setup
+![Nusic Logo](src/client/resources/assets/nusic/icon.png)
 
-For setup instructions, please see the [Fabric Documentation page](https://docs.fabricmc.net/develop/getting-started/creating-a-project#setting-up) related to the IDE that you are using.
+**Nusic** — музыкальный плеер для Minecraft, позволяющий слушать локальную музыку прямо внутри игры.
 
-## License
+Мод поддерживает воспроизведение аудио через FFmpeg, импорт музыки, управление плейлистом и удобный графический интерфейс.
 
-This template is available under the CC0 license. Feel free to learn from it and incorporate it in your own projects.
+---
+
+## ✨ Features
+
+- 🎵 Воспроизведение локальных треков
+- 📂 Автоматическое сканирование папки музыки
+- 📥 Импорт музыки через Drag & Drop
+- ▶️ Play / Pause / Stop управление
+- ⏩ Переключение треков
+- 🔊 Поддержка FFmpeg
+- 🎚️ Отображение прогресса трека
+- ⚙️ Система настроек
+- 🖥️ Minecraft GUI интерфейс
+
+---
+
+## 📁 Supported formats
+
+Поддерживаются:
+
+```
+MP3
+WAV
+OGG
+FLAC
+M4A
+```
+
+---
+
+## 📦 Installation
+
+1. Установите:
+
+- Minecraft `1.21.11`
+- Fabric Loader
+- Fabric API
+- Java 21+
+
+2. Скачайте последнюю версию Nusic.
+
+3. Поместите `.jar` файл в:
+
+```
+.minecraft/mods
+```
+
+4. Запустите Minecraft через Fabric.
+
+---
+
+## 🎶 Adding music
+
+После первого запуска создаётся папка:
+
+```
+.minecraft/config/nusic/music
+```
+
+Добавьте туда свои песни.
+
+Также можно использовать Drag & Drop импорт.
+
+---
+
+## 🛠️ Building
+
+Клонировать проект:
+
+```bash
+git clone https://github.com/Kw0rk/Nusic.git
+```
+
+Перейти в папку:
+
+```bash
+cd Nusic
+```
+
+Собрать:
+
+```bash
+./gradlew build
+```
+
+Готовый мод будет находиться:
+
+```
+build/libs/
+```
+
+---
+
+## 🔧 Requirements
+
+| Component | Version |
+|-|-|
+| Minecraft | 1.21.11 |
+| Fabric Loader | 0.19.3+ |
+| Java | 21+ |
+| Fabric API | Latest |
+
+---
+
+## 🚧 Development status
+
+Current version:
+
+```
+1.0.0 Alpha
+```
+
+Проект находится в активной разработке.
+
+Планируется:
+
+- улучшение интерфейса
+- плейлисты
+- эквалайзер
+- дополнительные настройки
+- улучшенная работа с библиотекой
+
+---
+
+## 📜 License
+
+Nusic распространяется под лицензией MIT.
+
+Вы можете использовать, изменять и распространять код согласно условиям лицензии.
+
+---
+
+## 👤 Author
+
+Created by **Kwork**
+
+GitHub:
+
+https://github.com/Kw0rk
