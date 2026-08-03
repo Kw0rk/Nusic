@@ -1,0 +1,40 @@
+{
+	"schemaVersion": 1,
+	"id": "nusic",
+	"version": "0.1.0-alpha",
+
+	"name": "Nusic",
+	
+	"icon": "assets/nusic/icon.png",
+
+	"description": "Modern minecraft music player",
+
+	"authors": [
+		"Kw0rk"
+	],
+
+	"license": "MIT",
+
+	"environment": "client",
+
+	"entrypoints": {
+		"client": [
+			"com.kwork.nusic.NusicMod"
+		]
+	},
+
+	"mixins": [
+		"nusic.mixins.json",
+		{
+			"config": "nusic.client.mixins.json",
+			"environment": "client"
+		}
+	],
+
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
