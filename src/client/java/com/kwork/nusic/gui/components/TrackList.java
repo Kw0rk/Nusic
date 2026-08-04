@@ -2,7 +2,10 @@ package com.kwork.nusic.gui.components;
 
 import com.kwork.nusic.core.NusicManager;
 import com.kwork.nusic.core.PlaybackManager;
+import com.kwork.nusic.core.PlaylistManager;
 import com.kwork.nusic.core.Track;
+import com.kwork.nusic.data.Playlist;
+import com.kwork.nusic.gui.Theme;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -10,13 +13,33 @@ import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 
+import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Scrollable list of tracks.
+ *
+ * LIBRARY mode shows a "+" button (add to playlist) and a "x" button
+ * (delete file). PLAYLIST mode shows a "-" button (remove from playlist).
+ */
 public class TrackList {
 
-    private static final int ROW_HEIGHT = 27;
+    public enum Mode {
+        LIBRARY,
+        PLAYLIST
+    }
 
-    private static final int DELETE_WIDTH = 22;
+    private static final int ROW_HEIGHT = 24;
+
+    private static final int BUTTON_SIZE = 16;
+
+    private final Mode mode;
+
+    private Playlist playlist;
+
+    private List<Track> tracks = new ArrayList<>();
+
+    private Runnable onChanged;
 
     private int x;
     private int y;
@@ -25,9 +48,26 @@ public class TrackList {
 
     private int scrollOffset;
 
-    private int hoverIndex = -1;
+    private int popupIndex = -1;
 
-    private int deleteHover = -1;
+    private int popupX;
+    private int popupY;
+
+    public TrackList(Mode mode) {
+        this.mode = mode;
+    }
+
+    public void setPlaylist(Playlist playlist) {
+        this.playlist = playlist;
+    }
+
+    public void setTracks(List<Track> tracks) {
+        this.tracks = tracks == null ? new ArrayList<>() : tracks;
+    }
+
+    public void setOnChanged(Runnable onChanged) {
+        this.onChanged = onChanged;
+    }
 
     public void render(
             DrawContext context,
@@ -37,34 +77,28 @@ public class TrackList {
             int y,
             int width,
             int height
-    ){
+    ) {
 
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
 
-        List<Track> tracks =
-                NusicManager
-                        .getInstance()
-                        .getTracks();
-
         TextRenderer renderer =
-                MinecraftClient
-                        .getInstance()
-                        .textRenderer;
+                MinecraftClient.getInstance().textRenderer;
 
-        if(tracks == null ||
-                tracks.isEmpty()){
+        if (tracks.isEmpty()) {
+
+            String message =
+                    mode == Mode.LIBRARY
+                            ? "No music found. Drop audio files into the game window."
+                            : "Playlist is empty. Add tracks from Home with the + button.";
 
             context.drawText(
                     renderer,
-                    Text.literal(
-                            "No music found"
-                    ),
-                    x+10,
-                    y+10,
-                    0xFFFFFFFF,
+                    Text.literal(message),
+                    x + 6, y + 10,
+                    Theme.TEXT_DIM,
                     false
             );
 
@@ -72,329 +106,419 @@ public class TrackList {
 
         }
 
-        clampScroll(
-                tracks.size()
-        );
+        clampScroll();
 
-        int start =
-                scrollOffset / ROW_HEIGHT;
+        context.enableScissor(x, y, x + width, y + height);
 
-        int offset =
-                scrollOffset % ROW_HEIGHT;
+        int start = scrollOffset / ROW_HEIGHT;
+        int rowY = y - scrollOffset % ROW_HEIGHT;
 
-        int rowY =
-                y-offset;
+        for (int i = start; i < tracks.size(); i++) {
 
-        for(int i=start;i<tracks.size();i++){
-
-            if(rowY > y+height)
+            if (rowY > y + height) {
                 break;
-
-            if(rowY+ROW_HEIGHT >= y){
-
-                drawTrack(
-                        context,
-                        renderer,
-                        tracks.get(i),
-                        i,
-                        rowY
-                );
-
             }
+
+            drawRow(context, renderer, tracks.get(i), i, rowY, mouseX, mouseY);
 
             rowY += ROW_HEIGHT;
 
         }
 
-        drawScrollbar(
-                context,
-                tracks.size()
-        );
+        context.disableScissor();
+
+        drawScrollbar(context);
+
+        if (popupIndex != -1) {
+            drawPopup(context, renderer, mouseX, mouseY);
+        }
 
     }
 
-    private void drawTrack(
+    private void drawRow(
             DrawContext context,
             TextRenderer renderer,
             Track track,
             int index,
-            int rowY
-    ){
+            int rowY,
+            int mouseX,
+            int mouseY
+    ) {
 
-        Track current =
-                PlaybackManager
-                        .getCurrentTrack();
+        Track current = PlaybackManager.getCurrentTrack();
 
-        boolean selected =
+        boolean playing =
                 current != null &&
-                current.getPath()
-                        .equals(
-                                track.getPath()
-                        );
+                current.getPath().equals(track.getPath());
 
-        if(selected ||
-                hoverIndex == index){
+        boolean hover =
+                popupIndex == -1 &&
+                insideList(mouseX, mouseY) &&
+                mouseY >= rowY && mouseY < rowY + ROW_HEIGHT;
 
-            context.fill(
-                    x,
-                    rowY,
-                    x+width,
-                    rowY+ROW_HEIGHT,
-                    0x33222222
-            );
-
+        if (hover) {
+            context.fill(x, rowY, x + width, rowY + ROW_HEIGHT, Theme.HOVER);
+        } else if (playing) {
+            context.fill(x, rowY, x + width, rowY + ROW_HEIGHT, Theme.PANEL);
         }
 
         context.drawText(
                 renderer,
-                Text.literal(
-                        String.valueOf(index+1)
-                ),
-                x+8,
-                rowY+9,
-                0xFF8EE6B0,
+                Text.literal(String.valueOf(index + 1)),
+                x + 8, rowY + 8,
+                playing ? Theme.ACCENT : Theme.TEXT_DIM,
                 false
         );
 
         context.drawText(
                 renderer,
-                Text.literal(
-                        track.getDisplayName()
-                ),
-                x+40,
-                rowY+9,
-                0xFFFFFFFF,
+                Text.literal(trim(renderer, track.getDisplayName())),
+                x + 34, rowY + 8,
+                playing ? Theme.ACCENT : Theme.TEXT,
                 false
         );
 
-        int bx =
-                x+width-DELETE_WIDTH-5;
+        context.fill(
+                x, rowY + ROW_HEIGHT - 1,
+                x + width, rowY + ROW_HEIGHT,
+                0xFF1B1B1B
+        );
 
-        boolean button =
-                deleteHover == index;
+        if (!hover) {
+            return;
+        }
+
+        if (mode == Mode.LIBRARY) {
+
+            drawRowButton(
+                    context, renderer, "+",
+                    addButtonX(), rowY,
+                    insideButton(mouseX, mouseY, addButtonX(), rowY),
+                    Theme.ACCENT
+            );
+
+            drawRowButton(
+                    context, renderer, "x",
+                    deleteButtonX(), rowY,
+                    insideButton(mouseX, mouseY, deleteButtonX(), rowY),
+                    Theme.DANGER
+            );
+
+        } else {
+
+            drawRowButton(
+                    context, renderer, "-",
+                    deleteButtonX(), rowY,
+                    insideButton(mouseX, mouseY, deleteButtonX(), rowY),
+                    Theme.DANGER
+            );
+
+        }
+
+    }
+
+    private void drawRowButton(
+            DrawContext context,
+            TextRenderer renderer,
+            String label,
+            int bx,
+            int rowY,
+            boolean hover,
+            int hoverColor
+    ) {
+
+        int by = rowY + (ROW_HEIGHT - BUTTON_SIZE) / 2;
 
         context.fill(
-                bx,
-                rowY+4,
-                bx+DELETE_WIDTH,
-                rowY+23,
-                button
-                        ? 0xFFFF3333
-                        : 0xFFAA2222
+                bx, by,
+                bx + BUTTON_SIZE, by + BUTTON_SIZE,
+                hover ? hoverColor : 0xFF333333
         );
 
         context.drawText(
                 renderer,
-                Text.literal("×"),
-                bx+7,
-                rowY+7,
-                0xFFFFFFFF,
+                Text.literal(label),
+                bx + 6, by + 4,
+                hover ? 0xFF000000 : Theme.TEXT,
                 false
-        );
-
-        context.fill(
-                x,
-                rowY+ROW_HEIGHT-1,
-                x+width,
-                rowY+ROW_HEIGHT,
-                0xFF1B1E23
         );
 
     }
 
-    public boolean mouseClicked(
-            Click click
-    ){
+    private void drawPopup(
+            DrawContext context,
+            TextRenderer renderer,
+            int mouseX,
+            int mouseY
+    ) {
 
-        if(click.button()!=0)
+        List<Playlist> playlists =
+                PlaylistManager.getPlaylists();
+
+        int popupWidth = 110;
+
+        int rows = Math.max(1, playlists.size());
+
+        int popupHeight = 14 + rows * 14;
+
+        int px = Math.min(popupX, x + width - popupWidth);
+
+        int py = Math.min(popupY, y + height - popupHeight);
+
+        context.fill(px, py, px + popupWidth, py + popupHeight, 0xFF202020);
+        context.fill(px, py, px + popupWidth, py + 1, Theme.DIVIDER);
+        context.fill(px, py + popupHeight - 1, px + popupWidth, py + popupHeight, Theme.DIVIDER);
+        context.fill(px, py, px + 1, py + popupHeight, Theme.DIVIDER);
+        context.fill(px + popupWidth - 1, py, px + popupWidth, py + popupHeight, Theme.DIVIDER);
+
+        context.drawText(
+                renderer,
+                Text.literal("Add to playlist"),
+                px + 6, py + 4,
+                Theme.TEXT_DIM,
+                false
+        );
+
+        if (playlists.isEmpty()) {
+
+            context.drawText(
+                    renderer,
+                    Text.literal("No playlists yet"),
+                    px + 6, py + 18,
+                    Theme.TEXT_MUTED,
+                    false
+            );
+
+            return;
+
+        }
+
+        int rowY = py + 14;
+
+        for (Playlist playlist : playlists) {
+
+            boolean hover =
+                    mouseX >= px && mouseX < px + popupWidth &&
+                    mouseY >= rowY && mouseY < rowY + 14;
+
+            if (hover) {
+                context.fill(px + 1, rowY, px + popupWidth - 1, rowY + 14, Theme.HOVER);
+            }
+
+            context.drawText(
+                    renderer,
+                    Text.literal(trimTo(renderer, playlist.getName(), popupWidth - 12)),
+                    px + 6, rowY + 3,
+                    Theme.TEXT,
+                    false
+            );
+
+            rowY += 14;
+
+        }
+
+    }
+
+    public boolean mouseClicked(Click click) {
+
+        if (click.button() != 0) {
+            return popupIndex != -1 && closePopup();
+        }
+
+        int mouseX = (int) click.x();
+        int mouseY = (int) click.y();
+
+        if (popupIndex != -1) {
+            return handlePopupClick(mouseX, mouseY);
+        }
+
+        if (!insideList(mouseX, mouseY)) {
             return false;
+        }
 
-        double mouseX =
-                click.x();
+        int index = (mouseY - y + scrollOffset) / ROW_HEIGHT;
 
-        double mouseY =
-                click.y();
-
-        List<Track> tracks =
-                NusicManager
-                        .getInstance()
-                        .getTracks();
-
-        if(tracks == null ||
-                tracks.isEmpty())
+        if (index < 0 || index >= tracks.size()) {
             return false;
+        }
 
-        if(mouseX < x ||
-                mouseX > x+width ||
-                mouseY < y ||
-                mouseY > y+height)
-            return false;
+        int rowY = y + index * ROW_HEIGHT - scrollOffset;
 
-        int index =
-                (
-                        (int)mouseY
-                        -
-                        y
-                        +
-                        scrollOffset
-                )
-                /
-                ROW_HEIGHT;
+        Track track = tracks.get(index);
 
-        if(index < 0 ||
-                index >= tracks.size())
-            return false;
+        if (mode == Mode.LIBRARY &&
+                insideButton(mouseX, mouseY, addButtonX(), rowY)) {
 
-        if(mouseX >
-                x+width-35){
-
-            NusicManager
-                    .getInstance()
-                    .deleteTrack(
-                            tracks.get(index)
-                    );
+            popupIndex = index;
+            popupX = addButtonX() - 110;
+            popupY = rowY + ROW_HEIGHT;
 
             return true;
 
         }
 
-        PlaybackManager
-                .playIndex(
-                        index
-                );
+        if (insideButton(mouseX, mouseY, deleteButtonX(), rowY)) {
+
+            if (mode == Mode.LIBRARY) {
+                NusicManager
+                        .getInstance()
+                        .deleteTrack(track);
+            } else {
+                PlaylistManager.removeTrack(playlist, track);
+            }
+
+            changed();
+
+            return true;
+
+        }
+
+        PlaybackManager.setQueue(tracks);
+        PlaybackManager.playIndex(index);
 
         return true;
 
     }
 
-    public void mouseMoved(
-            double mouseX,
-            double mouseY
-    ){
+    private boolean handlePopupClick(int mouseX, int mouseY) {
 
-        hoverIndex = -1;
+        List<Playlist> playlists =
+                PlaylistManager.getPlaylists();
 
-        deleteHover = -1;
+        int popupWidth = 110;
 
-        if(mouseX<x ||
-                mouseX>x+width ||
-                mouseY<y ||
-                mouseY>y+height)
-            return;
+        int rows = Math.max(1, playlists.size());
 
-        int index =
-                (
-                        (int)mouseY
-                        -
-                        y
-                        +
-                        scrollOffset
-                )
-                /
-                ROW_HEIGHT;
+        int popupHeight = 14 + rows * 14;
 
-        hoverIndex = index;
+        int px = Math.min(popupX, x + width - popupWidth);
 
-        if(mouseX >
-                x+width-35){
+        int py = Math.min(popupY, y + height - popupHeight);
 
-            deleteHover = index;
+        if (mouseX < px || mouseX >= px + popupWidth ||
+                mouseY < py || mouseY >= py + popupHeight) {
+            return closePopup();
+        }
+
+        int row = (mouseY - py - 14) / 14;
+
+        if (row >= 0 && row < playlists.size() &&
+                popupIndex >= 0 && popupIndex < tracks.size()) {
+
+            PlaylistManager.addTrack(
+                    playlists.get(row),
+                    tracks.get(popupIndex)
+            );
 
         }
 
+        return closePopup();
+
+    }
+
+    private boolean closePopup() {
+        popupIndex = -1;
+        return true;
     }
 
     public boolean mouseScrolled(
             double mouseX,
             double mouseY,
             double amount
-    ){
+    ) {
 
-        if(mouseX<x ||
-                mouseX>x+width ||
-                mouseY<y ||
-                mouseY>y+height)
+        if (!insideList((int) mouseX, (int) mouseY)) {
             return false;
+        }
 
-        scrollOffset -=
-                (int)(amount*28);
+        scrollOffset -= (int) (amount * ROW_HEIGHT);
 
-        List<Track> tracks =
-                NusicManager
-                        .getInstance()
-                        .getTracks();
-
-        clampScroll(
-                tracks.size()
-        );
+        clampScroll();
 
         return true;
 
     }
 
-    private void clampScroll(
-            int count
-    ){
+    private void changed() {
+        if (onChanged != null) {
+            onChanged.run();
+        }
+    }
 
-        int max =
-                Math.max(
-                        0,
-                        count*ROW_HEIGHT-height
-                );
+    private int addButtonX() {
+        return x + width - BUTTON_SIZE * 2 - 12;
+    }
 
-        scrollOffset =
-                Math.max(
-                        0,
-                        Math.min(
-                                scrollOffset,
-                                max
-                        )
-                );
+    private int deleteButtonX() {
+        return x + width - BUTTON_SIZE - 6;
+    }
+
+    private boolean insideButton(int mx, int my, int bx, int rowY) {
+
+        int by = rowY + (ROW_HEIGHT - BUTTON_SIZE) / 2;
+
+        return mx >= bx && mx < bx + BUTTON_SIZE &&
+                my >= by && my < by + BUTTON_SIZE;
 
     }
 
-    private void drawScrollbar(
-            DrawContext context,
-            int count
-    ){
+    private boolean insideList(int mx, int my) {
+        return mx >= x && mx <= x + width &&
+                my >= y && my <= y + height;
+    }
 
-        int total =
-                count*ROW_HEIGHT;
+    private void clampScroll() {
 
-        if(total<=height)
+        int max = Math.max(0, tracks.size() * ROW_HEIGHT - height);
+
+        scrollOffset = Math.max(0, Math.min(scrollOffset, max));
+
+    }
+
+    private void drawScrollbar(DrawContext context) {
+
+        int total = tracks.size() * ROW_HEIGHT;
+
+        if (total <= height) {
             return;
+        }
 
-        int bar =
-                Math.max(
-                        20,
-                        height*height/total
-                );
+        int bar = Math.max(20, height * height / total);
 
-        int pos =
-                y+
-                scrollOffset*
-                (height-bar)
-                /
-                (total-height);
+        int pos = y + scrollOffset * (height - bar) / (total - height);
 
         context.fill(
-                x+width-2,
-                pos,
-                x+width,
-                pos+bar,
-                0xFF5F6770
+                x + width - 2, pos,
+                x + width, pos + bar,
+                0xFF5F5F5F
         );
 
     }
 
-    public void reload(){
+    private String trim(TextRenderer renderer, String name) {
+        return trimTo(renderer, name, width - 100);
+    }
 
+    private String trimTo(TextRenderer renderer, String name, int max) {
+
+        if (renderer.getWidth(name) <= max) {
+            return name;
+        }
+
+        String result = name;
+
+        while (result.length() > 1 &&
+                renderer.getWidth(result + "...") > max) {
+            result = result.substring(0, result.length() - 1);
+        }
+
+        return result + "...";
+
+    }
+
+    public void reload() {
         scrollOffset = 0;
-
-        hoverIndex = -1;
-
-        deleteHover = -1;
-
+        popupIndex = -1;
     }
 
 }

@@ -409,6 +409,59 @@ public class MusicPlayer {
                 settings;
 
 
+        if(settings != null){
+
+
+            engine.setVolume(
+                    settings.volume
+            );
+
+
+        }
+
+
+    }
+
+
+
+
+
+
+
+    public void setVolume(
+            float volume
+    ){
+
+
+        engine.setVolume(
+                volume
+        );
+
+
+        if(settings != null){
+
+
+            settings.volume =
+                    volume;
+
+
+        }
+
+
+    }
+
+
+
+
+
+
+
+    public float getVolume(){
+
+
+        return engine.getVolume();
+
+
     }
 
 

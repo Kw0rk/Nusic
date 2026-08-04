@@ -23,14 +23,6 @@
 		]
 	},
 
-	"mixins": [
-		"nusic.mixins.json",
-		{
-			"config": "nusic.client.mixins.json",
-			"environment": "client"
-		}
-	],
-
 	"depends": {
 		"fabricloader": ">=0.19.3",
 		"minecraft": "~1.21.11",

@@ -1,6 +1,8 @@
 package com.kwork.nusic.gui.pages;
 
 import com.kwork.nusic.core.NusicManager;
+import com.kwork.nusic.gui.Theme;
+import com.kwork.nusic.gui.components.PlayerBar;
 import com.kwork.nusic.gui.components.Sidebar;
 import com.kwork.nusic.gui.components.TrackList;
 
@@ -17,7 +19,9 @@ public class HomePage implements Page {
     public HomePage(){
 
         trackList =
-                new TrackList();
+                new TrackList(
+                        TrackList.Mode.LIBRARY
+                );
 
     }
 
@@ -31,57 +35,52 @@ public class HomePage implements Page {
             int screenHeight
     ){
 
-        MinecraftClient client =
-                MinecraftClient.getInstance();
-
         TextRenderer renderer =
-                client.textRenderer;
+                MinecraftClient
+                        .getInstance()
+                        .textRenderer;
 
         NusicManager manager =
                 NusicManager.getInstance();
 
         int contentX =
-                Sidebar.WIDTH + 20;
+                Sidebar.WIDTH + 16;
 
         context.drawText(
                 renderer,
-                Text.literal(
-                        "Your music"
-                ),
+                Text.literal("Home"),
                 contentX,
-                18,
-                0xFFFFFFFF,
+                14,
+                Theme.TEXT,
                 false
         );
 
-        int count = 0;
-
-        if(manager.getTracks()!=null){
-
-            count =
-                    manager.getTracks()
-                            .size();
-
-        }
+        int count =
+                manager.getTracks() == null
+                        ? 0
+                        : manager.getTracks().size();
 
         context.drawText(
                 renderer,
                 Text.literal(
-                        count +
-                        " tracks found"
+                        count + " tracks in your library"
                 ),
                 contentX,
-                33,
-                0xFF747B84,
+                28,
+                Theme.TEXT_MUTED,
                 false
         );
 
         context.fill(
                 contentX,
-                49,
-                screenWidth-16,
-                50,
-                0xFF272B32
+                42,
+                screenWidth - 16,
+                43,
+                Theme.DIVIDER
+        );
+
+        trackList.setTracks(
+                manager.getTracks()
         );
 
         trackList.render(
@@ -89,9 +88,9 @@ public class HomePage implements Page {
                 mouseX,
                 mouseY,
                 contentX,
-                58,
-                screenWidth-contentX-16,
-                screenHeight-112
+                50,
+                screenWidth - contentX - 16,
+                screenHeight - 50 - PlayerBar.HEIGHT - 6
         );
 
     }
@@ -120,19 +119,6 @@ public class HomePage implements Page {
                 mouseX,
                 mouseY,
                 vertical
-        );
-
-    }
-
-    @Override
-    public void mouseMoved(
-            double mouseX,
-            double mouseY
-    ){
-
-        trackList.mouseMoved(
-                mouseX,
-                mouseY
         );
 
     }

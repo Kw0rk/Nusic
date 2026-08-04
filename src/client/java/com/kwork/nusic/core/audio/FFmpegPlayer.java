@@ -39,6 +39,9 @@ public class FFmpegPlayer {
     private Runnable finishedCallback;
 
 
+    private volatile float volume = 1.0f;
+
+
 
 
 
@@ -189,6 +192,9 @@ public class FFmpegPlayer {
                                 format,
                                 16384
                         );
+
+
+                        applyVolume();
 
 
                         line.start();
@@ -625,6 +631,90 @@ public class FFmpegPlayer {
     }
 
 
+
+
+
+
+
+    public void setVolume(
+            float value
+    ){
+
+        volume =
+                Math.max(
+                        0f,
+                        Math.min(
+                                1f,
+                                value
+                        )
+                );
+
+        applyVolume();
+
+    }
+
+
+
+
+
+    public float getVolume(){
+
+        return volume;
+
+    }
+
+
+
+
+
+    private void applyVolume(){
+
+        SourceDataLine current = line;
+
+        if(current == null)
+            return;
+
+        try{
+
+            if(current.isControlSupported(
+                    FloatControl.Type.MASTER_GAIN
+            )){
+
+                FloatControl control =
+                        (FloatControl)
+                        current.getControl(
+                                FloatControl.Type.MASTER_GAIN
+                        );
+
+                float clamped =
+                        Math.max(
+                                0.0001f,
+                                volume
+                        );
+
+                float gain =
+                        (float)(
+                                20.0
+                                *
+                                Math.log10(clamped)
+                        );
+
+                control.setValue(
+                        Math.max(
+                                control.getMinimum(),
+                                Math.min(
+                                        control.getMaximum(),
+                                        gain
+                                )
+                        )
+                );
+
+            }
+
+        }
+        catch(Exception ignored){}
+
+    }
 
 
 

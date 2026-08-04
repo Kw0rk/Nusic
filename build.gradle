@@ -9,12 +9,6 @@ group = project.maven_group
 
 
 
-repositories {
-
-}
-
-
-
 loom {
 
 	splitEnvironmentSourceSets()

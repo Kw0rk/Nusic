@@ -4,6 +4,7 @@ import com.kwork.nusic.data.SettingsData;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class PlaybackManager {
 
@@ -17,21 +18,23 @@ public class PlaybackManager {
 
     private static SettingsData settings;
 
+    private static final Random random = new Random();
+
     static {
 
         player.setOnFinished(() -> {
 
-            if(settings == null){
+            if(settings != null && settings.repeatTrack){
 
-                next();
+                play();
 
                 return;
 
             }
 
-            if(settings.autoNext){
+            if(settings == null || settings.autoNext){
 
-                next();
+                advance(true);
 
             }
 
@@ -162,7 +165,38 @@ public class PlaybackManager {
 
     public static synchronized void next(){
 
+        advance(false);
+
+    }
+
+    private static synchronized void advance(
+            boolean auto
+    ){
+
         if(queue.isEmpty()){
+
+            return;
+
+        }
+
+        if(settings != null &&
+                settings.shuffle &&
+                queue.size() > 1){
+
+            int newIndex = index;
+
+            while(newIndex == index){
+
+                newIndex =
+                        random.nextInt(
+                                queue.size()
+                        );
+
+            }
+
+            index = newIndex;
+
+            play();
 
             return;
 
@@ -172,15 +206,17 @@ public class PlaybackManager {
 
         if(index >= queue.size()){
 
-            if(settings != null &&
-                    settings.repeatPlaylist){
+            index = 0;
 
-                index = 0;
+            boolean repeat =
+                    settings != null &&
+                    settings.repeatPlaylist;
 
-            }
-            else{
+            if(auto && !repeat){
 
-                index = 0;
+                player.stop();
+
+                return;
 
             }
 
